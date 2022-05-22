@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stddef.h>
-
+#include <unistd.h>
 #include <list>
 
 #include "fat.h"
@@ -23,9 +23,17 @@ int mini_fat_write_in_block(FAT_FILESYSTEM *fs, const int block_id, const int bl
 	assert(size + block_offset <= fs->block_size);
 
 	int written = 0;
-
+    FILE* fat = fopen(fs->filename, "r+");
+    if (fat == NULL){
+        fprintf(stderr, "An error occured during opening the file for write in block\n");
+    }
 	// TODO: write in the real file.
-
+    //writing starting point
+    int write_start= block_id * fs->block_size + block_offset;
+    //get our file pointer to starting point
+    fseek(fat, write_start, SEEK_SET);
+    //fwrite to write buffer of size-bytes to file
+    written = fwrite(buffer, 1, size, fat);
 	return written;
 }
 
@@ -44,8 +52,20 @@ int mini_fat_read_in_block(FAT_FILESYSTEM *fs, const int block_id, const int blo
 	assert(size + block_offset <= fs->block_size);
 
 	int read = 0;
-
-	// TODO: read from the real file.
+    //open file
+    FILE* fat = fopen(fs->filename, "r+");
+    if (fat == NULL){
+        fprintf(stderr, "An error occured during opening the file for read in block\n");
+    }
+    // TODO: read from the real file.
+    //reading starting point
+    int read_start= block_id * fs->block_size + block_offset;
+    //get our file pointer to starting point
+    fseek(fat, read_start, SEEK_SET);
+    //fread to read into buffer size-bytes
+    read = fread(buffer, 1, size, fat);
+	
+    fclose(fat);
 
 	return read;
 }
@@ -57,7 +77,12 @@ int mini_fat_read_in_block(FAT_FILESYSTEM *fs, const int block_id, const int blo
  */
 int mini_fat_find_empty_block(const FAT_FILESYSTEM *fat) {
 	// TODO: find an empty block in fat and return its index.
-
+    int block_count = fat->block_count;
+    for (int i = 0; i < block_count ; i++){
+        if (fat->block_map[i] == EMPTY_BLOCK){
+            return i;
+        }
+    }
 	return -1;
 }
 
@@ -111,8 +136,15 @@ static FAT_FILESYSTEM * mini_fat_create_internal(const char * filename, const in
 FAT_FILESYSTEM * mini_fat_create(const char * filename, const int block_size, const int block_count) {
 
 	FAT_FILESYSTEM * fat = mini_fat_create_internal(filename, block_size, block_count);
-
 	// TODO: create the corresponding virtual disk file with appropriate size.
+    FILE * virtual_disk_file = fopen(filename,"w");
+    if (virtual_disk_file == NULL){
+        fprintf(stderr, "An error occured during creating virtual disk file\n");
+    }
+    if (ftruncate(fileno(virtual_disk_file), block_size*block_count) != 0){
+        fprintf(stderr, "An error occured during setting file size\n");
+    }
+    fclose(virtual_disk_file);
 	return fat;
 }
 
@@ -132,7 +164,12 @@ bool mini_fat_save(const FAT_FILESYSTEM *fat) {
 		return false;
 	}
 	// TODO: save all metadata (filesystem metadata, file metadata).
-
+    int block_count = fat->block_count;
+    for (int i = 0; i < block_count ; i++){
+        //find blocks with metadata
+        if (fat->block_map[i] == FILE_DATA_BLOCK || fat->block_map[i] == METADATA_BLOCK ){
+        }
+    }
 	return true;
 }
 
