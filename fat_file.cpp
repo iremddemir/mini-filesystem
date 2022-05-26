@@ -124,17 +124,36 @@ FAT_OPEN_FILE * mini_file_open(FAT_FILESYSTEM *fs, const char *filename, const b
 	FAT_FILE * fd = mini_file_find(fs, filename);
 	if (!fd) {
 		// TODO: check if it's write mode, and if so create it. Otherwise return NULL.
-		return NULL;
+        if (is_write){
+            fd = mini_file_create_file(fs, filename);
+            if (fd == NULL){
+                fprintf(stderr, "An error occured during creating file\n");
+                return NULL;
+            }
+        }
+        //it is not in write mode so not existing file created only if it is in write mode
+        else{
+            fprintf(stderr, "File does not exists and  not in write mode\n");
+            return NULL;
+        }
 	}
 
 	if (is_write) {
 		// TODO: check if other write handles are open.
-		return NULL;
-	}
-
+        int total_open = fd->open_handles.size();
+        for (int i = 0; i < total_open; i++){
+            if(fd->open_handles[i]->is_write){
+                fprintf(stderr, "Cannot open file in write mode because other write handles are open\n");
+                return NULL;
+            }
+        }
+    }
+        
 	FAT_OPEN_FILE * open_file = new FAT_OPEN_FILE;
 	// TODO: assign open_file fields.
-
+    open_file->file = fd;
+    open_file->position = 0;
+    open_file->is_write = is_write;
 	// Add to list of open handles for fd:
 	fd->open_handles.push_back(open_file);
 	return open_file;
@@ -205,6 +224,20 @@ bool mini_file_seek(FAT_FILESYSTEM *fs, FAT_OPEN_FILE * open_file, const int off
 bool mini_file_delete(FAT_FILESYSTEM *fs, const char *filename)
 {
 	// TODO: delete file after checks.
+    FAT_FILE* fat = mini_file_find(fs, filename);
+    if (fat == NULL){
+        fprintf(stderr, "File cannot be found so will not be deleted\n");
+        return false;
+    }
+    //check if the file is open
+    int total_open = fat->open_handles.size();
+    for (int i = 0; i < total_open; i++){
+        if (fat->open_handles[i]->is_write == true){
+            fprintf(stderr, "File is in use / open so will not be deleted\n");
+            return false;
+        }
+    }
+    //marks the blocks of deleted file as empty on filesystem
 
 	return false;
 }
