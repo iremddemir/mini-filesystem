@@ -208,9 +208,9 @@ int mini_file_write(FAT_FILESYSTEM *fs, FAT_OPEN_FILE * open_file, const int siz
     while (bytes_left > 0) {
         // Write to next block.
         block_index = mini_fat_allocate_new_block(fs, FILE_DATA_BLOCK);
-        //add block index to fd block ids
+        //add block index to fat block ids
         fat->block_ids.push_back(block_index);
-        bytes_to_write = (((bytes_left)<(fs->block_size - byte_index))?(bytes_left):(fs->block_size - byte_index));
+        bytes_to_write = (((bytes_left)<(fs->block_size))?(bytes_left):(fs->block_size));
         fat->size += mini_fat_write_in_block(fs, block_index, 0, bytes_to_write, buffer);
         written_bytes += bytes_to_write;
         bytes_left -= bytes_to_write;
@@ -230,6 +230,55 @@ int mini_file_read(FAT_FILESYSTEM *fs, FAT_OPEN_FILE * open_file, const int size
     int read_bytes = 0;
 
     // TODO: read file.
+        
+    FAT_FILE * fat = open_file->file;
+    if (size < 0) {
+        fprintf(stderr, "Attempting to write a negative number of bytes.\n");
+        return 0;
+    }
+        //give an error if file is empty
+    if (fat->size == 0){
+        fprintf(stderr, "File is empty\n");
+        return 0;
+    }
+    int bytes_left = size;
+    int position = open_file->position;
+    int block_index = position_to_block_index(fs, position);
+    int byte_index = position_to_byte_index(fs, position);
+    //if size left in file is smaller than what we were given, update the size that we will read
+    bytes_left = (((bytes_left)<(fat->size - position))?(bytes_left):(fat->size - position));
+    int bytes_to_read = 0;
+    if (byte_index <= fs->block_size){
+        // Read from first block.
+        bytes_to_read = (((bytes_left)<(fs->block_size - byte_index))?(bytes_left):(fs->block_size - byte_index));
+        mini_fat_read_in_block(fs, block_index, byte_index, bytes_to_read, buffer);
+        bytes_left -= bytes_to_read;
+        read_bytes += bytes_to_read;
+        //update the buffer
+        buffer = (char*)buffer + bytes_to_read;
+    }
+    //get index of block_index in fat block_id s
+    int block_index_in_fat = 0;
+    for (int i = 0; i < fat->block_ids.size(); i++){
+        if (fat->block_ids[i] == block_index){
+            block_index_in_fat = i;
+            break;
+            }
+        }
+    while (bytes_left > 0) {
+        // Read from next block.
+        block_index_in_fat += 1;
+        block_index = fat->block_ids[block_index_in_fat];
+        bytes_to_read = (((bytes_left)<(fs->block_size))?(bytes_left):(fs->block_size));
+        mini_fat_read_in_block(fs, block_index, 0, bytes_to_read, buffer);
+        bytes_left -= bytes_to_read;
+        read_bytes += bytes_to_read;
+        //update the buffer
+        buffer = (char*)buffer + bytes_to_read;
+            
+        }
+        open_file ->position += read_bytes;
+
 
     return read_bytes;
 }
