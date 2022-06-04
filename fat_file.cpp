@@ -182,9 +182,42 @@ bool mini_file_close(FAT_FILESYSTEM *fs, const FAT_OPEN_FILE * open_file)
 int mini_file_write(FAT_FILESYSTEM *fs, FAT_OPEN_FILE * open_file, const int size, const void * buffer)
 {
     int written_bytes = 0;
-
+    int bytes_left = size;
+    FAT_FILE *fat = open_file->file;
+    if (!open_file->is_write) {
+        fprintf(stderr, "Attempting to write to a file opened in read mode.\n");
+        return 0;
+    }
+    if (size < 0) {
+        fprintf(stderr, "Attempting to write a negative number of bytes.\n");
+        return 0;
+    }
+    int position = open_file->position;
+    int block_index = position_to_block_index(fs, position);
+    int byte_index = position_to_byte_index(fs, position);
+    int bytes_to_write = 0;
+    if (byte_index <= fs->block_size){
+        bytes_to_write = (((bytes_left)<(fs->block_size - byte_index))?(bytes_left):(fs->block_size - byte_index));
+        fat->size += mini_fat_write_in_block(fs, block_index, byte_index, bytes_to_write, buffer);
+                written_bytes += bytes_to_write;
+                bytes_left -= bytes_to_write;
+                //update the buffer
+                buffer = (char*)buffer + bytes_to_write;
+    }
     // TODO: write to file.
-
+    while (bytes_left > 0) {
+        // Write to next block.
+        block_index = mini_fat_allocate_new_block(fs, FILE_DATA_BLOCK);
+        //add block index to fd block ids
+        fat->block_ids.push_back(block_index);
+        bytes_to_write = (((bytes_left)<(fs->block_size - byte_index))?(bytes_left):(fs->block_size - byte_index));
+        fat->size += mini_fat_write_in_block(fs, block_index, 0, bytes_to_write, buffer);
+        written_bytes += bytes_to_write;
+        bytes_left -= bytes_to_write;
+        //update the buffer
+        buffer = (char*)buffer + bytes_to_write;
+    }
+    open_file->position += written_bytes;
     return written_bytes;
 }
 
