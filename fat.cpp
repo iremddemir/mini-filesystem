@@ -190,6 +190,11 @@ bool mini_fat_save(const FAT_FILESYSTEM *fat) {
         fwrite(&(fat->files[i]->name), MAX_FILENAME_LENGTH, 1, fat_fd);
         fwrite(&(fat->files[i]->size), sizeof(int), 1, fat_fd);
         fwrite(&(fat->files[i]->metadata_block_id), sizeof(int), 1, fat_fd);
+        size_t num_blocks = fat->files[i]->block_ids.size();
+        fwrite(&(num_blocks), sizeof(size_t), 1, fat_fd);
+        for(int j = 0; j < num_blocks; j++) {
+            fwrite(&(fat->files[i]->block_ids[j]), sizeof(int), 1, fat_fd);
+        }
     }
     
     fclose(fat_fd);
@@ -230,6 +235,13 @@ FAT_FILESYSTEM * mini_fat_load(const char *filename) {
         fread(&(f_file->name), MAX_FILENAME_LENGTH, 1, fat_fd);
         fread(&(f_file->size), sizeof(int), 1, fat_fd);
         fread(&(f_file->metadata_block_id), sizeof(int), 1, fat_fd);
+        size_t num_blocks;
+        fread(&(num_blocks), sizeof(size_t), 1, fat_fd);
+        for(int j = 0; j < num_blocks; j++) {
+            int block_num;
+            fread(&(block_num), sizeof(int), 1, fat_fd);
+            f_file->block_ids.push_back(block_num);
+        }
         //printf("Pushing file %d\n", i);
         fat->files.push_back(f_file);
     }
