@@ -226,12 +226,15 @@ FAT_FILESYSTEM * mini_fat_load(const char *filename) {
     printf("Number of files: %d\n", size);
 
     for(int i = 0; i < size; i++) {
-        FAT_FILE f_file;
-        fread(&(f_file.name), MAX_FILENAME_LENGTH, 1, fat_fd);
-        fread(&(f_file.size), sizeof(int), 1, fat_fd);
-        fread(&(f_file.metadata_block_id), sizeof(int), 1, fat_fd);
+        FAT_FILE* f_file = new FAT_FILE;
+        fread(&(f_file->name), MAX_FILENAME_LENGTH, 1, fat_fd);
+        fread(&(f_file->size), sizeof(int), 1, fat_fd);
+        fread(&(f_file->metadata_block_id), sizeof(int), 1, fat_fd);
+        //printf("Pushing file %d\n", i);
+        fat->files.push_back(f_file);
     }
 
+    //mini_fat_dump(fat);
 
     fclose(fat_fd);
 	return fat;
