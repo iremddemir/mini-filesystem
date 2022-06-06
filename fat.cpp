@@ -182,6 +182,10 @@ bool mini_fat_save(const FAT_FILESYSTEM *fat) {
         }
     }
 
+    size_t size = fat->files.size();
+
+    fwrite(&size, sizeof(size_t), 1, fat_fd);
+
     for(int i = 0; i < fat->files.size(); i++) {
         fwrite(&(fat->files[i]->name), MAX_FILENAME_LENGTH, 1, fat_fd);
         fwrite(&(fat->files[i]->size), sizeof(int), 1, fat_fd);
@@ -210,17 +214,23 @@ FAT_FILESYSTEM * mini_fat_load(const char *filename) {
     fread(&(fat->block_count), sizeof(fat->block_count), 1, fat_fd);
     fread(&(fat->block_map), sizeof(unsigned char), fat->block_count, fat_fd);
 
-    printf("Block size: %d\n", fat->block_size);
-    printf("Block count: %d\n", fat->block_count);
-
     for(int i = 1; i < fat->block_count; i++) {
         if(fat->block_map[i] == FILE_DATA_BLOCK) {
             fread(&(fat->block_map[i]), sizeof(fat->block_map[i]), 1, fat_fd);
         }
     }
 
-    
+    size_t size;
 
+    fread(&size, sizeof(size_t), 1, fat_fd);
+    printf("Number of files: %d\n", size);
+
+    for(int i = 0; i < size; i++) {
+        FAT_FILE f_file;
+        fread(&(f_file.name), MAX_FILENAME_LENGTH, 1, fat_fd);
+        fread(&(f_file.size), sizeof(int), 1, fat_fd);
+        fread(&(f_file.metadata_block_id), sizeof(int), 1, fat_fd);
+    }
 
 
     fclose(fat_fd);
