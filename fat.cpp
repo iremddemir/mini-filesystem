@@ -181,6 +181,12 @@ bool mini_fat_save(const FAT_FILESYSTEM *fat) {
             fwrite(&(fat->block_map[i]), sizeof(fat->block_map[i]), 1, fat_fd);
         }
     }
+
+    for(int i = 0; i < fat->files.size(); i++) {
+        fwrite(&(fat->files[i]->name), MAX_FILENAME_LENGTH, 1, fat_fd);
+        fwrite(&(fat->files[i]->size), sizeof(int), 1, fat_fd);
+        fwrite(&(fat->files[i]->metadata_block_id), sizeof(int), 1, fat_fd);
+    }
     
     fclose(fat_fd);
 	return true;
