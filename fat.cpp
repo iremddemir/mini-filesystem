@@ -3,6 +3,8 @@
 #include <stddef.h>
 #include <unistd.h>
 #include <list>
+#include <cassert>
+#include <stdlib.h>
 
 #include "fat.h"
 #include "fat_file.h"
@@ -192,8 +194,29 @@ FAT_FILESYSTEM * mini_fat_load(const char *filename) {
 	}
 	// TODO: load all metadata (filesystem metadata, file metadata) and create filesystem.
 
-	int block_size = 1024, block_count = 10;
-	FAT_FILESYSTEM * fat = mini_fat_create_internal(filename, block_size, block_count);
+	//int block_size = 1024, block_count = 10;
+	//FAT_FILESYSTEM * fat = mini_fat_create_internal(filename, block_size, block_count);
 
+    FAT_FILESYSTEM * fat = new FAT_FILESYSTEM;
+    fat->filename = filename;
+    fseek(fat_fd, 0, SEEK_SET);
+    fread(&(fat->block_size), sizeof(fat->block_size), 1, fat_fd);
+    fread(&(fat->block_count), sizeof(fat->block_count), 1, fat_fd);
+    fread(&(fat->block_map), sizeof(unsigned char), fat->block_count, fat_fd);
+
+    printf("Block size: %d\n", fat->block_size);
+    printf("Block count: %d\n", fat->block_count);
+
+    for(int i = 1; i < fat->block_count; i++) {
+        if(fat->block_map[i] == FILE_DATA_BLOCK) {
+            fread(&(fat->block_map[i]), sizeof(fat->block_map[i]), 1, fat_fd);
+        }
+    }
+
+    
+
+
+
+    fclose(fat_fd);
 	return fat;
 }
