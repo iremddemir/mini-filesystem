@@ -81,6 +81,7 @@ int mini_fat_read_in_block(FAT_FILESYSTEM *fs, const int block_id, const int blo
 int mini_fat_find_empty_block(const FAT_FILESYSTEM *fat) {
 	// TODO: find an empty block in fat and return its index.
     int block_count = fat->block_count;
+    //for each block in block map check if type is EMPTY_BLOCK
     for (int i = 0; i < block_count ; i++){
         if (fat->block_map[i] == EMPTY_BLOCK){
             return i;
@@ -140,7 +141,9 @@ FAT_FILESYSTEM * mini_fat_create(const char * filename, const int block_size, co
 
 	FAT_FILESYSTEM * fat = mini_fat_create_internal(filename, block_size, block_count);
 	// TODO: create the corresponding virtual disk file with appropriate size.
+    //create a binary file (open with wb)
     FILE * virtual_disk_file = fopen(filename,"wb");
+    //if some error occured raise error
     if (virtual_disk_file == NULL){
         fprintf(stderr, "An error occured during creating virtual disk file\n");
     }
@@ -148,6 +151,7 @@ FAT_FILESYSTEM * mini_fat_create(const char * filename, const int block_size, co
         fprintf(stderr, "An error occured during setting file size\n");
     }*/
     //use fseek here too
+    //set the file size
     fseek(virtual_disk_file, block_size*block_count, SEEK_SET);
     fclose(virtual_disk_file);
 	return fat;
@@ -183,9 +187,9 @@ bool mini_fat_save(const FAT_FILESYSTEM *fat) {
     }
 
     size_t size = fat->files.size();
-
+    //save file size
     fwrite(&size, sizeof(size_t), 1, fat_fd);
-
+    //each file save name,size,metadatablocid, number of blocks allocated and block id of them
     for(int i = 0; i < fat->files.size(); i++) {
         fwrite(&(fat->files[i]->name), MAX_FILENAME_LENGTH, 1, fat_fd);
         fwrite(&(fat->files[i]->size), sizeof(int), 1, fat_fd);
@@ -211,14 +215,16 @@ FAT_FILESYSTEM * mini_fat_load(const char *filename) {
 
 	//int block_size = 1024, block_count = 10;
 	//FAT_FILESYSTEM * fat = mini_fat_create_internal(filename, block_size, block_count);
-
+    //create new filesystem
     FAT_FILESYSTEM * fat = new FAT_FILESYSTEM;
+    //set filename to given parameter
     fat->filename = filename;
     fseek(fat_fd, 0, SEEK_SET);
+    //read initial metadata block information
     fread(&(fat->block_size), sizeof(fat->block_size), 1, fat_fd);
     fread(&(fat->block_count), sizeof(fat->block_count), 1, fat_fd);
     fread(&(fat->block_map), sizeof(unsigned char), fat->block_count, fat_fd);
-
+    //iterate over all blocs and read them
     for(int i = 0; i < fat->block_count; i++) {
         //if(fat->block_map[i] == FILE_DATA_BLOCK) {
             fread(&(fat->block_map[i]), sizeof(fat->block_map[i]), 1, fat_fd);
@@ -226,10 +232,10 @@ FAT_FILESYSTEM * mini_fat_load(const char *filename) {
     }
 
     size_t size;
-
+    //then read size
     fread(&size, sizeof(size_t), 1, fat_fd);
     printf("Number of files: %d\n", size);
-
+    //create fat_files using saved information
     for(int i = 0; i < size; i++) {
         FAT_FILE* f_file = new FAT_FILE;
         fread(&(f_file->name), MAX_FILENAME_LENGTH, 1, fat_fd);

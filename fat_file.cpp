@@ -192,6 +192,7 @@ int mini_file_write(FAT_FILESYSTEM *fs, FAT_OPEN_FILE * open_file, const int siz
     int written_bytes = 0;
     int bytes_left = size;
     FAT_FILE *fat = open_file->file;
+    //do initial checks if not in write mode, if given size is negative etc.
     if (!open_file->is_write) {
         fprintf(stderr, "Attempting to write to a file opened in read mode.\n");
         return 0;
@@ -204,7 +205,9 @@ int mini_file_write(FAT_FILESYSTEM *fs, FAT_OPEN_FILE * open_file, const int siz
     int block_index = position_to_block_index(fs, position);
     int byte_index = position_to_byte_index(fs, position);
     int bytes_to_write = 0;
+    //write in first block (the file position left) if there is still space
     if (byte_index <= fs->block_size){
+        //write possible highest value of bytes (it is either all we have or the space left in block)
         bytes_to_write = (((bytes_left)<(fs->block_size - byte_index))?(bytes_left):(fs->block_size - byte_index));
         fat->size += mini_fat_write_in_block(fs, block_index, byte_index, bytes_to_write, buffer);
                 written_bytes += bytes_to_write;
@@ -225,6 +228,7 @@ int mini_file_write(FAT_FILESYSTEM *fs, FAT_OPEN_FILE * open_file, const int siz
         //update the buffer
         buffer = (char*)buffer + bytes_to_write;
     }
+    //change position to where we achieved last
     open_file->position += written_bytes;
     return written_bytes;
 }
@@ -256,8 +260,10 @@ int mini_file_read(FAT_FILESYSTEM *fs, FAT_OPEN_FILE * open_file, const int size
     //if size left in file is smaller than what we were given, update the size that we will read
     bytes_left = (((bytes_left)<(fat->size - position))?(bytes_left):(fat->size - position));
     int bytes_to_read = 0;
+    //read in first block (the file position left) if there is still space to read
     if (byte_index <= fs->block_size){
         // Read from first block.
+        //read possible highest value of bytes (it is either all we have or the space we can read in that block)
         bytes_to_read = (((bytes_left)<(fs->block_size - byte_index))?(bytes_left):(fs->block_size - byte_index));
         mini_fat_read_in_block(fs, block_index, byte_index, bytes_to_read, buffer);
         bytes_left -= bytes_to_read;
@@ -346,7 +352,7 @@ bool mini_file_delete(FAT_FILESYSTEM *fs, const char *filename)
         int block_id = fat->block_ids[i];
         fs->block_map[block_id] = EMPTY_BLOCK;
     }
-
+    //use given function to delete file after emptying its content
     vector_delete_value(fs->files, fat);
 
     return true;
