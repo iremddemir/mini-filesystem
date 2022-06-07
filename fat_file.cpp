@@ -1,5 +1,9 @@
 #include "fat.h"
 #include "fat_file.h"
+#include <cstdarg>
+#include <cstdio>
+#include <string.h>
+#include <cassert>
 
 // Little helper to show debug messages. Set 1 to 0 to silence.
 #define DEBUG 1
@@ -121,10 +125,14 @@ int mini_file_size(FAT_FILESYSTEM *fs, const char *filename) {
  */
 FAT_OPEN_FILE * mini_file_open(FAT_FILESYSTEM *fs, const char *filename, const bool is_write)
 {
+    printf("Filename: %s\n", filename);
     FAT_FILE * fd = mini_file_find(fs, filename);
+    //printf("Found file: %p", fd);
     if (!fd) {
+        printf("File null\n");
         // TODO: check if it's write mode, and if so create it. Otherwise return NULL.
         if (is_write){
+            printf("Is writing\n");
             fd = mini_file_create_file(fs, filename);
             if (fd == NULL){
                 fprintf(stderr, "An error occured during creating file\n");
@@ -137,7 +145,7 @@ FAT_OPEN_FILE * mini_file_open(FAT_FILESYSTEM *fs, const char *filename, const b
             return NULL;
         }
     }
-
+    printf("Is write? %s\n", is_write ? "true" : "false");
     if (is_write) {
         // TODO: check if other write handles are open.
         int total_open = fd->open_handles.size();
@@ -319,6 +327,7 @@ bool mini_file_delete(FAT_FILESYSTEM *fs, const char *filename)
 {
     // TODO: delete file after checks.
     FAT_FILE* fat = mini_file_find(fs, filename);
+    printf("File Exists? %s\n", fat == NULL ? "No" : "Yes");
     if (fat == NULL){
         fprintf(stderr, "File cannot be found so will not be deleted\n");
         return false;
@@ -332,9 +341,13 @@ bool mini_file_delete(FAT_FILESYSTEM *fs, const char *filename)
         }
     }
     int block_ids_size =fat->block_ids.size();
+    printf("Block ID size: %d\n", block_ids_size);
     for (int i=0; i<block_ids_size; ++i) {
         int block_id = fat->block_ids[i];
         fs->block_map[block_id] = EMPTY_BLOCK;
     }
+
+    vector_delete_value(fs->files, fat);
+
     return true;
 }

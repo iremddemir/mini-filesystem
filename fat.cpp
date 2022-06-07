@@ -177,9 +177,9 @@ bool mini_fat_save(const FAT_FILESYSTEM *fat) {
     int block_count = fat->block_count;
     for (int i = 0; i < block_count ; i++){
         //find blocks with metadata
-        if (fat->block_map[i] == FILE_DATA_BLOCK){
+        //if (fat->block_map[i] == FILE_DATA_BLOCK){
             fwrite(&(fat->block_map[i]), sizeof(fat->block_map[i]), 1, fat_fd);
-        }
+        //}
     }
 
     size_t size = fat->files.size();
@@ -219,10 +219,10 @@ FAT_FILESYSTEM * mini_fat_load(const char *filename) {
     fread(&(fat->block_count), sizeof(fat->block_count), 1, fat_fd);
     fread(&(fat->block_map), sizeof(unsigned char), fat->block_count, fat_fd);
 
-    for(int i = 1; i < fat->block_count; i++) {
-        if(fat->block_map[i] == FILE_DATA_BLOCK) {
+    for(int i = 0; i < fat->block_count; i++) {
+        //if(fat->block_map[i] == FILE_DATA_BLOCK) {
             fread(&(fat->block_map[i]), sizeof(fat->block_map[i]), 1, fat_fd);
-        }
+        //}
     }
 
     size_t size;
